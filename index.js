@@ -22,9 +22,26 @@ app.get('/', (req, res) => {
 app.post('/pedidos', async (req, res) => {
   try {
     const nuevoPedido = req.body;
+
+    // ✅ Validar que los campos obligatorios no estén vacíos
+    if (
+      !nuevoPedido.nombreCliente ||
+      !nuevoPedido.telefono ||
+      !nuevoPedido.cantidad ||
+      !nuevoPedido.fechaEntrega ||
+      !nuevoPedido.direccionEntrega
+    ) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios en el pedido' });
+    }
+
+    // Agregar timestamp antes de guardar
     nuevoPedido.timestamp = admin.firestore.Timestamp.now();
+
+    // Guardar en Firebase
     await db.collection('pedidos').add(nuevoPedido);
+
     res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
