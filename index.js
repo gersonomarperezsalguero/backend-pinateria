@@ -25,14 +25,16 @@ app.post('/pedidos', async (req, res) => {
 
     // ✅ Validar que los campos obligatorios no estén vacíos
     if (
-      !nuevoPedido.nombreCliente ||
-      !nuevoPedido.telefono ||
-      !nuevoPedido.cantidad ||
-      !nuevoPedido.fechaEntrega ||
-      !nuevoPedido.direccionEntrega
-    ) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios en el pedido' });
-    }
+  !nuevoPedido.nombreCliente ||
+  !nuevoPedido.telefono ||
+  !nuevoPedido.fechaEntrega ||
+  !nuevoPedido.direccionEntrega ||
+  !nuevoPedido.pinatas ||
+  !Array.isArray(nuevoPedido.pinatas) ||
+  nuevoPedido.pinatas.length === 0
+) {
+  return res.status(400).json({ error: 'Faltan campos obligatorios en el pedido' });
+}
 
     // Agregar timestamp antes de guardar
     nuevoPedido.timestamp = admin.firestore.Timestamp.now();
