@@ -39,10 +39,12 @@ app.post('/pedidos', async (req, res) => {
     // Agregar timestamp antes de guardar
     nuevoPedido.timestamp = admin.firestore.Timestamp.now();
 
-    // Guardar en Firebase
-    await db.collection('pedidos').add(nuevoPedido);
+    // Guardar en Firebase y registrar el ID
+  const ref = await db.collection('pedidos').add(nuevoPedido);
+  await ref.update({ id: ref.id }); // 🔁 guarda el ID dentro del documento
 
-    res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
+res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
+
 
   } catch (error) {
     res.status(500).json({ error: error.message });
