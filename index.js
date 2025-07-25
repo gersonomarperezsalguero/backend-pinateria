@@ -48,7 +48,24 @@ app.post('/pedidos', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// PATCH para marcar un pedido como entregado
+app.patch('/pedidos/:id', async (req, res) => {
+  try {
+    const pedidoId = req.params.id;
+    const { entregado } = req.body;
 
+    if (typeof entregado !== 'boolean') {
+      return res.status(400).json({ error: 'El valor "entregado" debe ser true o false' });
+    }
+
+    const pedidoRef = db.collection('pedidos').doc(pedidoId);
+    await pedidoRef.update({ entregado });
+
+    res.status(200).json({ mensaje: 'Estado de entrega actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
