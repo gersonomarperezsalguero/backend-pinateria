@@ -39,36 +39,26 @@ app.post('/pedidos', async (req, res) => {
     // Agregar timestamp antes de guardar
     nuevoPedido.timestamp = admin.firestore.Timestamp.now();
 
-    // Guardar en Firebase y registrar el ID
-  const ref = await db.collection('pedidos').add(nuevoPedido);
-  await ref.update({ id: ref.id }); // 🔁 guarda el ID dentro del documento
+    // Guardar en Firebase
+    await db.collection('pedidos').add(nuevoPedido);
 
-res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
-
+    res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-// PATCH para marcar un pedido como entregado
-app.patch('/pedidos/:id', async (req, res) => {
-  try {
-    const pedidoId = req.params.id;
-    const { entregado } = req.body;
 
-    if (typeof entregado !== 'boolean') {
-      return res.status(400).json({ error: 'El valor "entregado" debe ser true o false' });
-    }
-
-    const pedidoRef = db.collection('pedidos').doc(pedidoId);
-    await pedidoRef.update({ entregado });
-
-    res.status(200).json({ mensaje: 'Estado de entrega actualizado correctamente' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 const PORT = process.env.PORT || 3000;
+app.get('/pedidos', async (req, res) => {
+  try {
+    const snapshot = await db.collection('pedidos').orderBy('timestamp', 'desc').get();
+    const pedidos = snapshot.docs.map(doc => doc.data());
+    res.json(pedidos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 app.listen(PORT, () => {
-  console.log(Servidor corriendo en puerto ${PORT});
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
