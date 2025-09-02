@@ -19,25 +19,12 @@ app.get('/', (req, res) => {
   res.send('API de Piñatería Las Palmas funcionando');
 });
 
-// ✅ Nueva ruta: Obtener todos los pedidos incluyendo el campo ID
-app.get('/pedidos', async (req, res) => {
-  try {
-    const snapshot = await db.collection('pedidos').get();
-    const pedidos = snapshot.docs.map(doc => ({
-      id: doc.id, // Agrega el ID real del documento
-      ...doc.data()
-    }));
-    res.status(200).json(pedidos);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
+// ✅ Crear pedido
 app.post('/pedidos', async (req, res) => {
   try {
     const nuevoPedido = req.body;
 
-    // ✅ Validar que los campos obligatorios no estén vacíos
+    // Validar campos obligatorios
     if (
       !nuevoPedido.nombreCliente ||
       !nuevoPedido.telefono ||
@@ -52,31 +39,72 @@ app.post('/pedidos', async (req, res) => {
 
     // Agregar timestamp antes de guardar
     nuevoPedido.timestamp = admin.firestore.Timestamp.now();
+    nuevoPedido.entregado = false;
+    nuevoPedido.enCamino = false;
 
-    // Guardar en Firebase y registrar el ID
-    const ref = await db.collection('pedidos').add(nuevoPedido);
-    await ref.update({ id: ref.id }); // 🔁 guarda el ID dentro del documento
+    // Guardar en Firebase
+    const docRef = await db.collection('pedidos').add(nuevoPedido);
 
-    res.status(200).json({ mensaje: 'Pedido guardado correctamente' });
+    res.status(200).json({ mensaje: 'Pedido guardado correctamente', id: docRef.id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PATCH para marcar un pedido como entregado
+// ✅ Obtener pedidos (incluye id)
+app.get('/pedidos', async (req, res) => {
+  try {
+    const snapshot = await db.collection('pedidos').orderBy('timestamp', 'desc').get();
+    const pedidos = snapshot.docs.map(doc => ({
+      id: doc.id, // 👈 importante
+      ...doc.data()
+    }));
+    res.json(pedidos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Actualizar estado o campos de un pedido
 app.patch('/pedidos/:id', async (req, res) => {
   try {
-    const pedidoId = req.params.id;
-    const { entregado } = req.body;
+    const { id } = req.params;
+    const cambios = req.body;
 
-    if (typeof entregado !== 'boolean') {
-      return res.status(400).json({ error: 'El valor "entregado" debe ser true o false' });
+    if (!cambios || Object.keys(cambios).length === 0) {
+      return res.status(400).json({ error: 'No se enviaron cambios' });
     }
 
-    const pedidoRef = db.collection('pedidos').doc(pedidoId);
-    await pedidoRef.update({ entregado });
+    const pedidoRef = db.collection('pedidos').doc(id);
+    const pedidoDoc = await pedidoRef.get();
 
-    res.status(200).json({ mensaje: 'Estado de entrega actualizado correctamente' });
+    if (!pedidoDoc.exists) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    await pedidoRef.update(cambios);
+
+    res.json({ mensaje: 'Pedido actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Eliminar pedido
+app.delete('/pedidos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pedidoRef = db.collection('pedidos').doc(id);
+    const pedidoDoc = await pedidoRef.get();
+
+    if (!pedidoDoc.exists) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    await pedidoRef.delete();
+
+    res.json({ mensaje: 'Pedido eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -86,3 +114,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
