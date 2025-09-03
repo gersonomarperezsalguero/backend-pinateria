@@ -115,3 +115,46 @@ app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
 
+// ✅ Crear producto
+app.post('/productos', async (req, res) => {
+  try {
+    const nuevoProducto = req.body;
+
+    if (!nuevoProducto.nombre || !nuevoProducto.detalles || !nuevoProducto.precio) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios del producto' });
+    }
+
+    nuevoProducto.timestamp = admin.firestore.Timestamp.now();
+
+    const docRef = await db.collection('productos').add(nuevoProducto);
+
+    res.status(200).json({ mensaje: 'Producto agregado correctamente', id: docRef.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Obtener productos
+app.get('/productos', async (req, res) => {
+  try {
+    const snapshot = await db.collection('productos').orderBy('timestamp', 'desc').get();
+    const productos = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.json(productos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Eliminar producto
+app.delete('/productos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('productos').doc(id).delete();
+    res.json({ mensaje: 'Producto eliminado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
