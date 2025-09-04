@@ -120,27 +120,29 @@ app.post('/productos', async (req, res) => {
   try {
     const nuevoProducto = req.body;
 
-    if (!nuevoProducto.nombre || !nuevoProducto.detalles || !nuevoProducto.precio) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios del producto' });
+    if (!nuevoProducto.nombre || !nuevoProducto.detalles || !nuevoProducto.precio || !nuevoProducto.foto) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios en el producto' });
     }
 
-    nuevoProducto.timestamp = admin.firestore.Timestamp.now();
+    // Guardar en Firestore
+    const docRef = await db.collection('productos').add({
+      ...nuevoProducto,
+      timestamp: admin.firestore.Timestamp.now(),
+    });
 
-    const docRef = await db.collection('productos').add(nuevoProducto);
-
-    res.status(200).json({ mensaje: 'Producto agregado correctamente', id: docRef.id });
+    res.status(200).json({ mensaje: 'Producto guardado correctamente', id: docRef.id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ Obtener productos
+// ✅ Obtener todos los productos
 app.get('/productos', async (req, res) => {
   try {
     const snapshot = await db.collection('productos').orderBy('timestamp', 'desc').get();
     const productos = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
     res.json(productos);
   } catch (error) {
@@ -152,9 +154,45 @@ app.get('/productos', async (req, res) => {
 app.delete('/productos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await db.collection('productos').doc(id).delete();
+
+    const productoRef = db.collection('productos').doc(id);
+    const productoDoc = await productoRef.get();
+
+    if (!productoDoc.exists) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    await productoRef.delete();
+
     res.json({ mensaje: 'Producto eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Editar producto parcialmente
+app.patch('/productos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cambios = req.body;
+
+    if (!cambios || Object.keys(cambios).length === 0) {
+      return res.status(400).json({ error: 'No se enviaron cambios' });
+    }
+
+    const productoRef = db.collection('productos').doc(id);
+    const productoDoc = await productoRef.get();
+
+    if (!productoDoc.exists) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    await productoRef.update(cambios);
+
+    res.json({ mensaje: 'Producto actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 
