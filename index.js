@@ -117,7 +117,7 @@ app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
 
-// ✅ Crear producto (sin guardar id dentro del documento)
+// ✅ Crear producto
 app.post('/productos', async (req, res) => {
   try {
     const nuevoProducto = req.body;
@@ -126,12 +126,9 @@ app.post('/productos', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios en el producto' });
     }
 
-    // 👇 eliminamos id si viene en el body
-    const { id, ...datosProducto } = nuevoProducto;
-
     // Guardar en Firestore
     const docRef = await db.collection('productos').add({
-      ...datosProducto,
+      ...nuevoProducto,
       timestamp: admin.firestore.Timestamp.now(),
     });
 
@@ -146,7 +143,7 @@ app.get('/productos', async (req, res) => {
   try {
     const snapshot = await db.collection('productos').orderBy('timestamp', 'desc').get();
     const productos = snapshot.docs.map(doc => ({
-      id: doc.id,   // 🔑 id real del documento
+      id: doc.id,
       ...doc.data(),
     }));
     res.json(productos);
@@ -175,18 +172,15 @@ app.delete('/productos/:id', async (req, res) => {
   }
 });
 
-// ✅ Editar producto parcialmente (sin guardar id dentro del documento)
+// Editar producto parcialmente
 app.patch('/productos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    let cambios = req.body;
+    const cambios = req.body;
 
     if (!cambios || Object.keys(cambios).length === 0) {
       return res.status(400).json({ error: 'No se enviaron cambios' });
     }
-
-    // 👇 eliminamos id del body por si viene
-    const { id: _, ...cambiosSinId } = cambios;
 
     const productoRef = db.collection('productos').doc(id);
     const productoDoc = await productoRef.get();
@@ -195,7 +189,7 @@ app.patch('/productos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    await productoRef.update(cambiosSinId);
+    await productoRef.update(cambios);
 
     res.json({ mensaje: 'Producto actualizado correctamente' });
   } catch (error) {
